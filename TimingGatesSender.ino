@@ -1,10 +1,10 @@
     #include "Wire.h"
     #include <Sparkfun_APDS9301_Library.h>
-         #include <VirtualWire.h>
+    #include <VirtualWire.h>
 
     APDS9301 apds;
 
-    #define INT_PIN 16 // We'll connect the INT pin from our sensor to the
+    #define INT_PIN 2 // We'll connect the INT pin from our sensor to the
                       // INT0 interrupt pin on the Arduino.
     bool lightIntHappened = false; // flag set in the interrupt to let the
                       //  mainline code know that an interrupt occurred.
@@ -18,7 +18,6 @@ char *controller;
       Serial.begin(115200);
       Wire.begin();
 
-pinMode(13,OUTPUT);
 vw_set_ptt_inverted(true); //
 vw_set_tx_pin(12);
 vw_setup(4000);// speed of data transfer Kbps
@@ -34,9 +33,9 @@ vw_setup(4000);// speed of data transfer Kbps
                          //  integration time to the shortest interval.
                          //  Again, not strictly necessary, as this is
                          //  the default.
-      apds.setLowThreshold(0); // Sets the low threshold to 0, effectively
+      apds.setLowThreshold(5); // Sets the low threshold to 0, effectively
                          //  disabling the low side interrupt.
-      apds.setHighThreshold(50); // Sets the high threshold to 500. This
+      apds.setHighThreshold(50000); // Sets the high threshold to 500. This
                          //  is an arbitrary number I pulled out of thin
                          //  air for purposes of the example. When the CH0
                          //  reading exceeds this level, an interrupt will
@@ -50,7 +49,7 @@ vw_setup(4000);// speed of data transfer Kbps
       pinMode(INT_PIN, INPUT_PULLUP); // This pin must be a pullup or have
                          //  a pullup resistor on it as the interrupt is a
                          //  negative going open-collector type output.
-      attachInterrupt(digitalPinToInterrupt(16), lightInt, FALLING);
+      attachInterrupt(digitalPinToInterrupt(2), lightInt, FALLING);
       Serial.println(apds.getLowThreshold());
       Serial.println(apds.getHighThreshold());
     }
@@ -58,31 +57,19 @@ vw_setup(4000);// speed of data transfer Kbps
     void loop() 
     {
       static unsigned long outLoopTimer = 0;
-      apds.clearIntFlag();                          
-
-      // This is a once-per-second timer that calculates and prints off
-      //  the current lux reading.
-      if (millis() - outLoopTimer >= 1000)
-      {
-        outLoopTimer = millis();
-    
-        Serial.print("Luminous flux: ");
-        Serial.println(apds.readCH0Level(),6);
-
-        //// Our code
-        int lightSensorValue = apds.readCH0Level();
-        //Serial.print(lightSensorValue);
-  
-         if(lightSensorValue < 3)
+      apds.clearIntFlag();       
+         if(lightIntHappened)
          {
               controller="0" ;
               vw_send((uint8_t *)controller, strlen(controller));
               vw_wait_tx(); // Wait until the whole message is gone
+              Serial.println("Sent message");
+              lightIntHappened = false;
               delay(2000);
          }
          
       ////
-      }
+      
     }
     
     void lightInt()
